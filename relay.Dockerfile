@@ -12,6 +12,7 @@ ADD . /src/
 RUN go build -o /src/build/relay ./cmd/relay
 
 FROM alpine
+LABEL org.opencontainers.image.source=https://github.com/andyleap/nostr
 
 RUN apk add --no-cache ca-certificates
 
