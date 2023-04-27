@@ -9,7 +9,7 @@ RUN go mod download
 
 ADD . /src/
 
-RUN go build -o /src/build/relay cmd/relay
+RUN go build -o /src/build/relay ./cmd/relay
 
 FROM alpine
 
