@@ -50,7 +50,6 @@ func (r *Relay) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		http.Error(rw, "Could not open websocket connection", http.StatusBadRequest)
 	}
-	defer conn.Close(websocket.StatusInternalError, "The sky is falling")
 	ctx := req.Context()
 	connID := common.RandID()
 
@@ -74,6 +73,9 @@ func (r *Relay) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 		switch req := req.(type) {
 		case *comm.Publish:
+			if !req.Event.CheckSig() {
+				continue
+			}
 			deny := false
 			for _, f := range r.filters {
 				if !f(req.Event) {
