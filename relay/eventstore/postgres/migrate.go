@@ -34,7 +34,7 @@ func migrateDB(ctx context.Context, db *sql.DB) error {
 	})
 	for _, entry := range entries {
 		parts := strings.Split(entry.Name(), ".")
-		v, _ := strconv.Atoi(parts[0])
+		v, err := strconv.Atoi(parts[0])
 		if err != nil {
 			continue
 		}
