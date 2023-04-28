@@ -134,7 +134,7 @@ func buildWhereClause(filters ...*comm.Filter) (string, []interface{}) {
 			sep = " AND "
 		}
 		if len(filter.Kinds) > 0 {
-			query += sep + fmt.Sprintf("kinds = ANY($%d)", len(args)+1)
+			query += sep + fmt.Sprintf("kind = ANY($%d)", len(args)+1)
 			args = append(args, pq.Int64Array(filter.Kinds))
 			sep = " AND "
 		}
