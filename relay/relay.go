@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 
@@ -19,6 +20,8 @@ type Relay struct {
 	store eventstore.EventStore
 
 	filters []func(*proto.Event) bool
+
+	rd relayData
 }
 
 func New(store eventstore.EventStore) *Relay {
@@ -33,10 +36,21 @@ func New(store eventstore.EventStore) *Relay {
 			}
 		}
 	}()
+	rd := relayData{
+		Name:          "Nostr Relay",
+		Description:   "Relay running https://github.com/andyleap/nostr",
+		SupportedNIPs: []int{1, 11},
+	}
+
 	return &Relay{
 		es:    es,
 		store: store,
+		rd:    rd,
 	}
+}
+
+func (r *Relay) AddNip(nip int) {
+	r.rd.SupportedNIPs = append(r.rd.SupportedNIPs, nip)
 }
 
 func (r *Relay) AddFilter(f func(*proto.Event) bool) {
@@ -47,8 +61,52 @@ func (r *Relay) EventStream() *eventstream.EventStream {
 	return r.es
 }
 
+func (r *Relay) EventStore() eventstore.EventStore {
+	return r.store
+}
+
+/*
+{
+  "name": <string identifying relay>,
+  "description": <string with detailed information>,
+  "pubkey": <administrative contact pubkey>,
+  "contact": <administrative alternate contact>,
+  "supported_nips": <a list of NIP numbers supported by the relay>,
+  "software": <string identifying relay software URL>,
+  "version": <string version identifier>
+}
+*/
+
+type relayData struct {
+	Name           string `json:"name"`
+	Description    string `json:"description"`
+	PubKey         string `json:"pubkey,omitempty"`
+	Contact        string `json:"contact,omitempty"`
+	SupportedNIPs  []int  `json:"supported_nips"`
+	Software       string `json:"software,omitempty"`
+	SoftwareVerion string `json:"version,omitempty"`
+}
+
 func (r *Relay) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	//upgrade to websocket
+	upgrade := false
+	for _, header := range req.Header["Upgrade"] {
+		if header == "websocket" {
+			upgrade = true
+			break
+		}
+	}
+
+	if !upgrade {
+		if req.Header.Get("Accept") == "application/nostr+json" {
+			rw.Header().Set("Content-Type", "application/nostr+json")
+			buf, _ := json.Marshal(r.rd)
+			rw.Write(buf)
+			return
+		}
+		http.Error(rw, "Not a websocket request", http.StatusBadRequest)
+	}
+
 	conn, err := websocket.Accept(rw, req, nil)
 	if err != nil {
 		http.Error(rw, "Could not open websocket connection", http.StatusBadRequest)

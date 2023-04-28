@@ -1,4 +1,4 @@
-package relay
+package relay_test
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"github.com/andyleap/nostr/common"
 	"github.com/andyleap/nostr/proto"
 	"github.com/andyleap/nostr/proto/comm"
+	"github.com/andyleap/nostr/relay"
 	"github.com/andyleap/nostr/relay/eventstore/memory"
 	"github.com/andyleap/nostr/relay/nips/nip09"
 	"github.com/andyleap/nostr/relay/nips/nip16"
@@ -19,7 +20,7 @@ import (
 )
 
 var (
-	relay       *Relay
+	relayServer *relay.Relay
 	relayClient *client.Client
 	privKey     *secp256k1.PrivateKey
 )
@@ -27,8 +28,8 @@ var (
 func TestMain(m *testing.M) {
 	pkey := common.GeneratePrivateKey()
 	privKey = pkey
-	withRelayClient(func(r *Relay, c *client.Client) {
-		relay = r
+	withRelayClient(func(r *relay.Relay, c *client.Client) {
+		relayServer = r
 		relayClient = c
 		m.Run()
 	})
@@ -56,7 +57,7 @@ func TestSend(t *testing.T) {
 	e.Sign(privKey)
 	id := e.ID
 
-	ch := relay.es.Subscribe(e.ID, make(chan *proto.Event, 5))
+	ch := relayServer.EventStream().Subscribe(e.ID, make(chan *proto.Event, 5))
 	relayClient.Publish(context.Background(), e)
 found:
 	for {
@@ -305,12 +306,12 @@ func TestEphemeralTransmitted(t *testing.T) {
 	}
 }
 
-func withRelayClient(f func(*Relay, *client.Client)) {
+func withRelayClient(f func(*relay.Relay, *client.Client)) {
 	ms := memory.New()
-	r := New(ms)
-	nip09.Attach(r.EventStream(), ms)
-	nip16.Attach(ms)
-	nip33.Attach(ms)
+	r := relay.New(ms)
+	nip09.Attach(r)
+	nip16.Attach(r)
+	nip33.Attach(r)
 	wsServe := httptest.NewServer(r)
 	defer wsServe.Close()
 	ctx := context.Background()

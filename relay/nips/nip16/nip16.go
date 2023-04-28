@@ -3,11 +3,12 @@ package nip16
 import (
 	"github.com/andyleap/nostr/proto"
 	"github.com/andyleap/nostr/proto/comm"
+	"github.com/andyleap/nostr/relay"
 	"github.com/andyleap/nostr/relay/eventstore"
 )
 
-func Attach(store eventstore.StoreFilterer) {
-	store.AddFilter(func(e *proto.Event) (eventstore.FilterMethod, *comm.Filter) {
+func Attach(r *relay.Relay) {
+	r.EventStore().(eventstore.StoreFilterer).AddFilter(func(e *proto.Event) (eventstore.FilterMethod, *comm.Filter) {
 		if e.Kind >= 20000 && e.Kind < 30000 {
 			return eventstore.FilterMethodDrop, nil
 		}
@@ -19,4 +20,5 @@ func Attach(store eventstore.StoreFilterer) {
 		}
 		return eventstore.FilterMethodNormal, nil
 	})
+	r.AddNip(16)
 }
