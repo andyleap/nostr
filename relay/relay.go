@@ -37,6 +37,17 @@ func New(store eventstore.EventStore) *Relay {
 			}
 		}
 	}()
+	if sf, ok := store.(eventstore.StoreFilterer); ok {
+		sf.AddFilter(func(e *proto.Event) (eventstore.FilterMethod, *comm.Filter) {
+			if e.Kind == 0 || e.Kind == 3 {
+				return eventstore.FilterMethodSingle, &comm.Filter{
+					Authors: []string{e.PubKey},
+					Kinds:   []int64{e.Kind},
+				}
+			}
+			return eventstore.FilterMethodNormal, nil
+		})
+	}
 	rd := relayData{
 		Name:          "Nostr Relay",
 		Description:   "Relay running https://github.com/andyleap/nostr",

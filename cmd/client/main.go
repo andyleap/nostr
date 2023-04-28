@@ -50,6 +50,7 @@ var CLI struct {
 	} `command:"relay" description:"Manage the relay address"`
 	Publish struct {
 		Metadata `command:"metadata" description:"Publish metadata"`
+		Note     `command:"note" description:"Publish a note"`
 	} `command:"publish" description:"Publish data"`
 	Query `command:"query" description:"Query data"`
 }
@@ -115,12 +116,41 @@ func (m *Metadata) Execute(args []string) error {
 		Kind:      0,
 		Content:   string(buf),
 		CreatedAt: time.Now().Unix(),
+		Tags:      [][]string{},
 	}
 	event.Sign(cfg.Key.PrivateKey)
 	if !event.CheckSig() {
 		return errors.New("signature failed")
 	}
 	buf, _ = json.Marshal(event)
+	fmt.Printf("%s\n", buf)
+	c, err := client.Dial(context.Background(), cfg.Relay)
+	if err != nil {
+		return err
+	}
+	return c.Publish(context.Background(), event)
+}
+
+type Note struct {
+	Content string `long:"content" description:"Content" required:"true"`
+}
+
+func (n *Note) Execute(args []string) error {
+	cfg := loadJSONConfig(CLI.ConfigFile)
+	if cfg.Key == nil || cfg.Relay == "" {
+		return errors.New("no key or relay in config")
+	}
+	event := &proto.Event{
+		Kind:      1,
+		Content:   n.Content,
+		CreatedAt: time.Now().Unix(),
+		Tags:      [][]string{},
+	}
+	event.Sign(cfg.Key.PrivateKey)
+	if !event.CheckSig() {
+		return errors.New("signature failed")
+	}
+	buf, _ := json.Marshal(event)
 	fmt.Printf("%s\n", buf)
 	c, err := client.Dial(context.Background(), cfg.Relay)
 	if err != nil {
