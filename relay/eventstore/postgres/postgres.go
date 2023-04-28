@@ -9,7 +9,7 @@ import (
 	"github.com/andyleap/nostr/proto"
 	"github.com/andyleap/nostr/proto/comm"
 	"github.com/andyleap/nostr/relay/eventstore"
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 )
 
 type addReq struct {
@@ -34,10 +34,18 @@ func New(connStr string) (*PostgresStore, error) {
 		return nil, err
 	}
 
-	return &PostgresStore{
+	ch := make(chan addReq, 10)
+	ps := &PostgresStore{
 		conn: conn,
-		ch:   make(chan addReq, 10),
-	}, nil
+		ch:   ch,
+	}
+	go func() {
+		for ar := range ch {
+			ps.add(ar)
+		}
+	}()
+
+	return ps, nil
 }
 
 func (ps *PostgresStore) Add(e *proto.Event) error {
@@ -117,17 +125,17 @@ func buildWhereClause(filters ...*comm.Filter) (string, []interface{}) {
 		sep := ""
 		if len(filter.IDs) > 0 {
 			query += fmt.Sprintf("id = ANY($%d)", len(args)+1)
-			args = append(args, filter.IDs)
+			args = append(args, pq.StringArray(filter.IDs))
 			sep = " AND "
 		}
 		if len(filter.Authors) > 0 {
 			query += sep + fmt.Sprintf("pubkey = ANY($%d)", len(args)+1)
-			args = append(args, filter.Authors)
+			args = append(args, pq.StringArray(filter.Authors))
 			sep = " AND "
 		}
 		if len(filter.Kinds) > 0 {
 			query += sep + fmt.Sprintf("kinds = ANY($%d)", len(args)+1)
-			args = append(args, filter.Kinds)
+			args = append(args, pq.Int64Array(filter.Kinds))
 			sep = " AND "
 		}
 		if filter.Since > 0 {
