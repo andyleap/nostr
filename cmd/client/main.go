@@ -130,7 +130,8 @@ func (m *Metadata) Execute(args []string) error {
 }
 
 type Query struct {
-	Kind int `long:"kind" description:"Kind of event to query"`
+	Kind   int    `long:"kind" description:"Kind of event to query" default:"-1"`
+	PubKey string `long:"pubkey" description:"Public key to query"`
 }
 
 func (q *Query) Execute(args []string) error {
@@ -142,7 +143,14 @@ func (q *Query) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	events, err := c.Subscribe(context.Background(), &comm.Filter{Kinds: []int64{int64(q.Kind)}})
+	f := &comm.Filter{}
+	if q.Kind >= 0 {
+		f.Kinds = []int64{int64(q.Kind)}
+	}
+	if q.PubKey != "" {
+		f.Authors = []string{q.PubKey}
+	}
+	events, err := c.Subscribe(context.Background(), f)
 	if err != nil {
 		return err
 	}

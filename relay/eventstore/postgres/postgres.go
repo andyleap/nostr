@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/andyleap/nostr/proto"
 	"github.com/andyleap/nostr/proto/comm"
@@ -186,6 +187,7 @@ func (ps *PostgresStore) Get(filters ...*comm.Filter) ([]*proto.Event, error) {
 
 	rows, err := ps.conn.Query(query, args...)
 	if err != nil {
+		log.Println("Error querying for events:", query, args, err)
 		return nil, err
 	}
 	defer rows.Close()
