@@ -89,6 +89,11 @@ type relayData struct {
 }
 
 func (r *Relay) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+
+	rw.Header().Set("Access-Control-Allow-Origin", "*")
+	rw.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	rw.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, Upgrade")
+
 	//upgrade to websocket
 	upgrade := false
 	for _, header := range req.Header["Upgrade"] {
@@ -109,7 +114,9 @@ func (r *Relay) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	conn, err := websocket.Accept(rw, req, nil)
+	conn, err := websocket.Accept(rw, req, &websocket.AcceptOptions{
+		OriginPatterns: []string{"*"},
+	})
 	if err != nil {
 		log.Println(err)
 		return
