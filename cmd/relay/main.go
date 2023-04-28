@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
+	"github.com/andyleap/nostr/proto"
 	"github.com/andyleap/nostr/relay"
 	"github.com/andyleap/nostr/relay/eventstore/postgres"
 )
@@ -22,7 +24,19 @@ func main() {
 		panic(err)
 	}
 
+	pubKeysRaw := os.Getenv("PUB_KEYS")
+	pubKeys := strings.Split(pubKeysRaw, ",")
+
 	relay := relay.New(store)
+
+	relay.AddFilter(func(e *proto.Event) bool {
+		for _, k := range pubKeys {
+			if e.PubKey == k {
+				return true
+			}
+		}
+		return false
+	})
 
 	http.ListenAndServe(":8080", relay)
 }

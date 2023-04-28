@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
+	"github.com/andyleap/nostr/common"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
@@ -70,6 +71,7 @@ func (e *Event) CheckSig() bool {
 }
 
 func (e *Event) Sign(key *secp256k1.PrivateKey) error {
+	e.PubKey = common.PubKeyHex(key.PubKey())
 	id := e.CalcID()
 	e.ID = id
 	h, err := hex.DecodeString(id)

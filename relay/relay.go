@@ -17,6 +17,8 @@ type Relay struct {
 	es *eventstream.EventStream
 
 	store eventstore.EventStore
+
+	filters []func(*proto.Event) bool
 }
 
 func New(store eventstore.EventStore) *Relay {
@@ -34,8 +36,12 @@ func New(store eventstore.EventStore) *Relay {
 	}
 }
 
-func (es *Relay) EventStream() *eventstream.EventStream {
-	return es.es
+func (r *Relay) AddFilter(f func(*proto.Event) bool) {
+	r.filters = append(r.filters, f)
+}
+
+func (r *Relay) EventStream() *eventstream.EventStream {
+	return r.es
 }
 
 func (r *Relay) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -68,6 +74,16 @@ func (r *Relay) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 		switch req := req.(type) {
 		case *comm.Publish:
+			deny := false
+			for _, f := range r.filters {
+				if !f(req.Event) {
+					deny = true
+					break
+				}
+			}
+			if deny {
+				continue
+			}
 			r.es.Publish(req.Event)
 		case *comm.Subscribe:
 			ch := r.es.Subscribe(connID+"-"+req.ID, nil)
