@@ -73,7 +73,9 @@ func (r *Relay) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 		switch req := req.(type) {
 		case *comm.Publish:
+			log.Println("Publish", string(buf))
 			if !req.Event.CheckSig() {
+				log.Println("Invalid signature")
 				continue
 			}
 			deny := false
@@ -84,6 +86,7 @@ func (r *Relay) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 				}
 			}
 			if deny {
+				log.Println("Denied by filter")
 				continue
 			}
 			r.es.Publish(req.Event)

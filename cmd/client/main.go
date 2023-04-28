@@ -59,10 +59,7 @@ type Generate struct {
 }
 
 func (g *Generate) Execute(args []string) error {
-	key, err := secp256k1.GeneratePrivateKey()
-	if err != nil {
-		return err
-	}
+	key := common.GeneratePrivateKey()
 	pubHex := common.PubKeyHex(key.PubKey())
 	priv := privkey{key}
 	fmt.Printf("Public Key: %s\n", pubHex)
@@ -115,16 +112,21 @@ func (m *Metadata) Execute(args []string) error {
 	}
 	buf, _ := json.Marshal(metadata)
 	event := &proto.Event{
-		Kind:    0,
-		Content: string(buf),
+		Kind:      0,
+		Content:   string(buf),
+		CreatedAt: time.Now().Unix(),
 	}
 	event.Sign(cfg.Key.PrivateKey)
+	if !event.CheckSig() {
+		return errors.New("signature failed")
+	}
+	buf, _ = json.Marshal(event)
+	fmt.Printf("%s\n", buf)
 	c, err := client.Dial(context.Background(), cfg.Relay)
 	if err != nil {
 		return err
 	}
-	c.Publish(context.Background(), event)
-	return nil
+	return c.Publish(context.Background(), event)
 }
 
 type Query struct {
