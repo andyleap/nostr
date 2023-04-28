@@ -27,7 +27,10 @@ func New(store eventstore.EventStore) *Relay {
 	ch := es.Subscribe("store", make(chan *proto.Event, 100))
 	go func() {
 		for e := range ch {
-			store.Add(e)
+			err := store.Add(e)
+			if err != nil {
+				log.Println("Error storing event", err)
+			}
 		}
 	}()
 	return &Relay{
