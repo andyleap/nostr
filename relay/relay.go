@@ -167,6 +167,7 @@ func (r *Relay) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 				backfill, err := r.store.Get(req.Filters...)
 				if err != nil {
 					log.Println("Error getting backfill", err)
+					conn.Close(websocket.StatusInternalError, "Error getting backfill")
 					return
 				}
 				for _, e := range backfill {
@@ -177,6 +178,9 @@ func (r *Relay) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 					e, _ := resp.MarshalJSON()
 					conn.Write(ctx, websocket.MessageText, e)
 				}
+				resp := &comm.EndOfStoredEvents{ID: req.ID}
+				e, _ := resp.MarshalJSON()
+				conn.Write(ctx, websocket.MessageText, e)
 				for e := range ch {
 					good := false
 					for _, f := range req.Filters {

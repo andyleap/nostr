@@ -135,15 +135,15 @@ func (e *Event) MarshalJSON() ([]byte, error) {
 	return json.Marshal(msg)
 }
 
-type EndOfSubscription struct {
+type EndOfStoredEvents struct {
 	ID string
 }
 
-func (e *EndOfSubscription) resp() {}
+func (e *EndOfStoredEvents) resp() {}
 
-func (e *EndOfSubscription) MarshalJSON() ([]byte, error) {
+func (e *EndOfStoredEvents) MarshalJSON() ([]byte, error) {
 	msg := []interface{}{
-		"EOS",
+		"EOSE",
 		e.ID,
 	}
 	return json.Marshal(msg)
@@ -191,7 +191,7 @@ func ParseResp(data []byte) (Resp, error) {
 		}
 		resp = e
 	case "EOSE":
-		e := &EndOfSubscription{}
+		e := &EndOfStoredEvents{}
 		err = dec.Decode(&e.ID)
 		if err != nil {
 			return nil, err
