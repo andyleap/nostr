@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"nhooyr.io/websocket"
 
@@ -91,7 +92,7 @@ func (r *Relay) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	//upgrade to websocket
 	upgrade := false
 	for _, header := range req.Header["Upgrade"] {
-		if header == "websocket" {
+		if strings.ToLower(header) == "websocket" {
 			upgrade = true
 			break
 		}
@@ -105,11 +106,13 @@ func (r *Relay) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			return
 		}
 		http.Error(rw, "Not a websocket request", http.StatusBadRequest)
+		return
 	}
 
 	conn, err := websocket.Accept(rw, req, nil)
 	if err != nil {
-		http.Error(rw, "Could not open websocket connection", http.StatusBadRequest)
+		log.Println(err)
+		return
 	}
 	ctx := req.Context()
 	connID := common.RandID()
