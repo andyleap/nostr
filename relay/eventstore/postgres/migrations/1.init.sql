@@ -3,7 +3,7 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS events (
     id CHAR(64) NOT NULL,
     pubkey CHAR(64) NOT NULL,
-    created_at TIMESTAMP NOT NULL,
+    created_at INT NOT NULL,
     kind INT NOT NULL,
     tags JSONB NOT NULL,
     mungedTags JSONB NOT NULL,
