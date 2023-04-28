@@ -153,11 +153,9 @@ func buildWhereClause(filters ...*comm.Filter) (string, []interface{}) {
 			query += sep + "("
 			subsep := ""
 			for k, vals := range filter.TagFilters {
-				for _, v := range vals {
-					query += subsep + fmt.Sprintf("tags->'%s' @> $%d", k, len(args)+1)
-					args = append(args, v)
-					subsep = " AND "
-				}
+				query += subsep + fmt.Sprintf("tags->'%s' ?| $%d", k, len(args)+1)
+				args = append(args, pq.StringArray(vals))
+				subsep = " AND "
 			}
 			query += ")"
 		}
