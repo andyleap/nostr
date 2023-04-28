@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"encoding/json"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -24,16 +25,26 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	pkey, err := secp256k1.GeneratePrivateKey()
-	if err != nil {
-		panic(err)
-	}
+	pkey := common.GeneratePrivateKey()
 	privKey = pkey
 	withRelayClient(func(r *Relay, c *client.Client) {
 		relay = r
 		relayClient = c
 		m.Run()
 	})
+}
+
+func TestSign(t *testing.T) {
+	e := &proto.Event{
+		Kind:    1,
+		Content: common.RandID(),
+	}
+	e.Sign(privKey)
+	if !e.CheckSig() {
+		buf, _ := json.Marshal(e)
+		t.Log(string(buf))
+		t.Fatal("invalid signature")
+	}
 }
 
 func TestSend(t *testing.T) {

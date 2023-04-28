@@ -24,7 +24,6 @@ func (e *Event) CalcID() string {
 	sigobj := []interface{}{
 		0,
 		e.PubKey,
-		e.ID,
 		e.CreatedAt,
 		e.Kind,
 		e.Tags,

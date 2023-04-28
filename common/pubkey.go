@@ -7,7 +7,6 @@ import (
 )
 
 func PubKeyHex(pubKey *secp256k1.PublicKey) string {
-	buf := make([]byte, 32)
-	pubKey.X().FillBytes(buf)
+	buf := pubKey.SerializeCompressed()[1:]
 	return hex.EncodeToString(buf)
 }
