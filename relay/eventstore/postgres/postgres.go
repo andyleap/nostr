@@ -29,7 +29,10 @@ func New(connStr string) (*PostgresStore, error) {
 		return nil, err
 	}
 
-	migrateDB(context.Background(), conn)
+	err = migrateDB(context.Background(), conn)
+	if err != nil {
+		return nil, err
+	}
 
 	return &PostgresStore{
 		conn: conn,

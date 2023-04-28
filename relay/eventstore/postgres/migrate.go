@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -32,15 +33,18 @@ func migrateDB(ctx context.Context, db *sql.DB) error {
 		vj, _ := strconv.Atoi(strings.Split(entries[j].Name(), ".")[0])
 		return vi < vj
 	})
+	log.Println("[DB] Current version:", version)
 	for _, entry := range entries {
 		parts := strings.Split(entry.Name(), ".")
 		v, err := strconv.Atoi(parts[0])
 		if err != nil {
 			continue
 		}
+		log.Println("[DB] Found version:", v)
 		if v <= version {
 			continue
 		}
+		log.Println("[DB] Migrating to version:", v)
 		migration, err := migrations.ReadFile("migrations/" + entry.Name())
 		if err != nil {
 			return err
