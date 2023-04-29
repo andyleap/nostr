@@ -180,16 +180,18 @@ func (q *Query) Execute(args []string) error {
 	if q.PubKey != "" {
 		f.Authors = []string{q.PubKey}
 	}
-	events, err := c.Subscribe(context.Background(), f)
+	sub, err := c.Subscribe(context.Background(), f)
 	if err != nil {
 		return err
 	}
-	ch := time.After(1 * time.Second)
+	ch := time.After(10 * time.Second)
 	for {
 		select {
-		case event := <-events:
+		case event := <-sub.Events():
 			buf, _ := json.Marshal(event)
 			fmt.Printf("%s\n", buf)
+		case <-sub.Backfilling():
+			return nil
 		case <-ch:
 			return nil
 		}

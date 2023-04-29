@@ -81,7 +81,7 @@ func TestSubscribe(t *testing.T) {
 	}
 	e.Sign(privKey)
 	id := e.ID
-	ch, err := relayClient.Subscribe(context.Background(), &comm.Filter{
+	sub, err := relayClient.Subscribe(context.Background(), &comm.Filter{
 		IDs: []string{id},
 	})
 	if err != nil {
@@ -90,7 +90,7 @@ func TestSubscribe(t *testing.T) {
 	time.Sleep(time.Millisecond * 100)
 	relayClient.Publish(context.Background(), e)
 	select {
-	case e := <-ch:
+	case e := <-sub.Events():
 		t.Log(e)
 		if e.ID != id {
 			t.Fatal("wrong id")
@@ -112,7 +112,7 @@ func TestComplexFilter(t *testing.T) {
 	}
 	e.Sign(privKey)
 	id := e.ID
-	ch, err := relayClient.Subscribe(context.Background(), &comm.Filter{
+	sub, err := relayClient.Subscribe(context.Background(), &comm.Filter{
 		TagFilters: map[string][]string{
 			"q": {tag},
 		},
@@ -123,7 +123,7 @@ func TestComplexFilter(t *testing.T) {
 	time.Sleep(time.Millisecond * 100)
 	relayClient.Publish(context.Background(), e)
 	select {
-	case e := <-ch:
+	case e := <-sub.Events():
 		t.Log(e)
 		if e.ID != id {
 			t.Fatal("wrong id")
@@ -144,7 +144,7 @@ func TestBackfill(t *testing.T) {
 	time.Sleep(time.Millisecond * 100)
 
 	id := e.ID
-	ch, err := relayClient.Subscribe(context.Background(), &comm.Filter{
+	sub, err := relayClient.Subscribe(context.Background(), &comm.Filter{
 		IDs:   []string{id},
 		Limit: 100,
 	})
@@ -153,7 +153,7 @@ func TestBackfill(t *testing.T) {
 	}
 
 	select {
-	case e := <-ch:
+	case e := <-sub.Events():
 		t.Log(e)
 		if e.ID != id {
 			t.Fatal("wrong id")
@@ -185,7 +185,7 @@ func TestDelete(t *testing.T) {
 	time.Sleep(time.Millisecond * 100)
 
 	id := e.ID
-	ch, err := relayClient.Subscribe(context.Background(), &comm.Filter{
+	sub, err := relayClient.Subscribe(context.Background(), &comm.Filter{
 		IDs:   []string{id},
 		Limit: 100,
 	})
@@ -194,7 +194,7 @@ func TestDelete(t *testing.T) {
 	}
 
 	select {
-	case e := <-ch:
+	case e := <-sub.Events():
 		t.Log(e)
 		if e.ID == id {
 			t.Fatal("deleted event still exists")
@@ -221,7 +221,7 @@ func TestReplacable(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 100)
 
-	ch, err := relayClient.Subscribe(context.Background(), &comm.Filter{
+	sub, err := relayClient.Subscribe(context.Background(), &comm.Filter{
 		IDs:   []string{id},
 		Limit: 100,
 	})
@@ -230,7 +230,7 @@ func TestReplacable(t *testing.T) {
 	}
 
 	select {
-	case e := <-ch:
+	case e := <-sub.Events():
 		t.Log(e)
 		if e.ID == id {
 			t.Fatal("replaced event still exists")
@@ -250,7 +250,7 @@ func TestEphemeralStored(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 100)
 
-	ch, err := relayClient.Subscribe(context.Background(), &comm.Filter{
+	sub, err := relayClient.Subscribe(context.Background(), &comm.Filter{
 		IDs:   []string{id},
 		Limit: 100,
 	})
@@ -259,7 +259,7 @@ func TestEphemeralStored(t *testing.T) {
 	}
 
 	select {
-	case e := <-ch:
+	case e := <-sub.Events():
 		t.Log(e)
 		if e.ID == id {
 			t.Fatal("ephemeral event was stored")
@@ -276,7 +276,7 @@ func TestEphemeralTransmitted(t *testing.T) {
 	e.Sign(privKey)
 	id := e.ID
 
-	ch, err := relayClient.Subscribe(context.Background(), &comm.Filter{
+	sub, err := relayClient.Subscribe(context.Background(), &comm.Filter{
 		IDs:   []string{id},
 		Limit: 100,
 	})
@@ -296,7 +296,7 @@ func TestEphemeralTransmitted(t *testing.T) {
 	time.Sleep(time.Millisecond * 1000)
 
 	select {
-	case e := <-ch:
+	case e := <-sub.Events():
 		t.Log(e)
 		if e.ID == id {
 			break

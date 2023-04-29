@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 
 	"github.com/andyleap/nostr/common"
@@ -13,7 +14,7 @@ import (
 type Client struct {
 	conn *websocket.Conn
 
-	subs map[string]chan *proto.Event
+	subs map[string]*Subscription
 	mu   sync.Mutex
 }
 
@@ -25,7 +26,7 @@ func Dial(ctx context.Context, url string) (*Client, error) {
 
 	c := &Client{
 		conn: conn,
-		subs: make(map[string]chan *proto.Event),
+		subs: make(map[string]*Subscription),
 	}
 	go c.process()
 	return c, nil
@@ -48,19 +49,34 @@ func (c *Client) process() {
 		switch resp := resp.(type) {
 		case *comm.Event:
 			c.mu.Lock()
-			ch, ok := c.subs[resp.ID]
+			sub, ok := c.subs[resp.ID]
 			c.mu.Unlock()
 			if ok {
 				select {
-				case ch <- resp.Event:
+				case sub.ch <- resp.Event:
 				default:
-					close(ch)
-					c.mu.Lock()
-					delete(c.subs, resp.ID)
-					c.mu.Unlock()
+					sub.Close()
 				}
+			} else {
+				closesub := &comm.Close{
+					ID: resp.ID,
+				}
+				b, _ := json.Marshal(closesub)
+				c.conn.Write(ctx, websocket.MessageText, b)
 			}
-
+		case *comm.EndOfStoredEvents:
+			c.mu.Lock()
+			sub, ok := c.subs[resp.ID]
+			c.mu.Unlock()
+			if ok {
+				close(sub.backfilling)
+			} else {
+				closesub := &comm.Close{
+					ID: resp.ID,
+				}
+				b, _ := json.Marshal(closesub)
+				c.conn.Write(ctx, websocket.MessageText, b)
+			}
 		}
 	}
 }
@@ -80,7 +96,7 @@ func (c *Client) Publish(ctx context.Context, e *proto.Event) error {
 	return c.conn.Write(ctx, websocket.MessageText, b)
 }
 
-func (c *Client) Subscribe(ctx context.Context, filters ...*comm.Filter) (chan *proto.Event, error) {
+func (c *Client) Subscribe(ctx context.Context, filters ...*comm.Filter) (*Subscription, error) {
 	ch := make(chan *proto.Event, 100)
 	req := &comm.Subscribe{
 		ID:      common.RandID(),
@@ -92,10 +108,49 @@ func (c *Client) Subscribe(ctx context.Context, filters ...*comm.Filter) (chan *
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.subs[req.ID] = ch
+	sub := &Subscription{
+		c:           c,
+		id:          req.ID,
+		ch:          ch,
+		backfilling: make(chan struct{}),
+	}
+	c.subs[req.ID] = sub
 	err = c.conn.Write(ctx, websocket.MessageText, b)
 	if err != nil {
 		return nil, err
 	}
-	return ch, nil
+	return sub, nil
+}
+
+type Subscription struct {
+	c           *Client
+	id          string
+	ch          chan *proto.Event
+	backfilling chan struct{}
+}
+
+func (s *Subscription) Close() error {
+	s.c.mu.Lock()
+	defer s.c.mu.Unlock()
+	comm := &comm.Close{
+		ID: s.id,
+	}
+	b, err := comm.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	err = s.c.conn.Write(context.Background(), websocket.MessageText, b)
+	if err != nil {
+		return err
+	}
+	delete(s.c.subs, s.id)
+	return nil
+}
+
+func (s *Subscription) Backfilling() <-chan struct{} {
+	return s.backfilling
+}
+
+func (s *Subscription) Events() <-chan *proto.Event {
+	return s.ch
 }
