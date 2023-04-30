@@ -50,12 +50,11 @@ func (c *Client) process() {
 		case *comm.Event:
 			c.mu.Lock()
 			sub, ok := c.subs[resp.ID]
-			c.mu.Unlock()
 			if ok {
 				select {
 				case sub.ch <- resp.Event:
 				default:
-					sub.Close()
+					go sub.Close()
 				}
 			} else {
 				closesub := &comm.Close{
@@ -64,6 +63,7 @@ func (c *Client) process() {
 				b, _ := json.Marshal(closesub)
 				c.conn.Write(ctx, websocket.MessageText, b)
 			}
+			c.mu.Unlock()
 		case *comm.EndOfStoredEvents:
 			c.mu.Lock()
 			sub, ok := c.subs[resp.ID]
@@ -144,6 +144,7 @@ func (s *Subscription) Close() error {
 		return err
 	}
 	delete(s.c.subs, s.id)
+	close(s.ch)
 	return nil
 }
 
