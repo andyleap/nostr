@@ -127,11 +127,16 @@ type Subscription struct {
 	id          string
 	ch          chan *proto.Event
 	backfilling chan struct{}
+	closed      bool
 }
 
 func (s *Subscription) Close() error {
 	s.c.mu.Lock()
 	defer s.c.mu.Unlock()
+	if s.closed {
+		return nil
+	}
+	s.closed = true
 	comm := &comm.Close{
 		ID: s.id,
 	}
