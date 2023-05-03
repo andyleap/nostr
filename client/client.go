@@ -20,6 +20,7 @@ type Client struct {
 
 func Dial(ctx context.Context, url string) (*Client, error) {
 	conn, _, err := websocket.Dial(ctx, url, nil)
+	conn.SetReadLimit(1024 * 1024 * 1024)
 	if err != nil {
 		return nil, err
 	}
